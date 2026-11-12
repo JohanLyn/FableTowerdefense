@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MAP_SIZE, TICK_RATE } from '../src/data/config';
 import { NIGHTS } from '../src/data/waves';
-import { build, canPlace, createGame, startNight, step } from '../src/sim/game';
+import { build, canPlace, createGame, sell, startNight, step } from '../src/sim/game';
 import type { Game } from '../src/sim/types';
 import { buyFromPlan } from './plan';
 
@@ -45,12 +45,12 @@ describe('simulation', () => {
     expect(g.night).toBeLessThanOrEqual(3);
   });
 
-  it('is usually won by a plain tower ring with no walls', () => {
+  it('is usually won by a plain farm-and-tower build with no walls', () => {
     const seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     const wins = seeds.filter((seed) => playPlan(seed).phase === 'won').length;
     // Balance guard: beatable without walls, but not a walkover.
     expect(wins).toBeGreaterThanOrEqual(6);
-    expect(NIGHTS.length).toBe(5);
+    expect(NIGHTS.length).toBe(10);
   });
 
   it('lets enemies chew through a complete wall', () => {
@@ -78,5 +78,54 @@ describe('simulation', () => {
     expect(build(g, 'launcher', C, C)).toBe(false); // on the Carrot
     g.carrots = 0;
     expect(build(g, 'hedge', 5, 5)).toBe(false); // cannot afford
+  });
+
+  it('needs a spare bunny for every crewed building', () => {
+    const g = createGame(1);
+    g.carrots = 10_000;
+    for (let i = 0; i < 4; i++) expect(build(g, 'launcher', 4 + i, 4)).toBe(true);
+    expect(build(g, 'launcher', 8, 4)).toBe(false); // all four bunnies are busy
+    expect(build(g, 'hutch', 4, 6)).toBe(true); // arrives with a pair
+    expect(g.bunnies).toBe(6);
+    expect(build(g, 'launcher', 8, 4)).toBe(true);
+  });
+
+  it('grows bunnies and carrots at dawn', () => {
+    const g = createGame(1);
+    g.carrots = 10_000;
+    build(g, 'hutch', C - 3, C);
+    build(g, 'patch', C + 3, C);
+    for (let i = 0; i < 6; i++) build(g, 'launcher', C - 3 + i, C - 3);
+    expect(g.bunnies).toBe(6);
+    const before = g.carrots;
+    runNight(g);
+    expect(g.phase).toBe('day');
+    // One Hutch plus one for the first five bunnies.
+    expect(g.bunnies).toBe(8);
+    const kills = NIGHTS[0].groups[0].count * 4;
+    expect(g.carrots).toBe(before + NIGHTS[0].reward + kills + 20);
+  });
+
+  it('browns out when Tesla Hutches outdraw the Hamster Wheels', () => {
+    const g = createGame(1);
+    g.carrots = 10_000;
+    build(g, 'tesla', 5, 5);
+    expect(g.brownout).toBe(true);
+    build(g, 'wheel', 6, 5);
+    expect(g.brownout).toBe(false);
+    expect([g.voltDraw, g.voltSupply]).toEqual([5, 10]);
+  });
+
+  it('switches off the newest buildings when a Hutch is lost', () => {
+    const g = createGame(1);
+    g.carrots = 10_000;
+    for (let i = 0; i < 4; i++) build(g, 'launcher', 4 + i, 4);
+    build(g, 'hutch', 4, 6);
+    build(g, 'launcher', 8, 4);
+    build(g, 'launcher', 9, 4);
+    sell(g, 4, 6);
+    expect(g.bunnies).toBe(4);
+    const staffed = [...g.buildings.values()].filter((b) => b.kind === 'launcher').map((b) => b.staffed);
+    expect(staffed).toEqual([true, true, true, true, false, false]);
   });
 });

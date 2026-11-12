@@ -1,4 +1,4 @@
-import type { BuildingKind } from '../data/buildings';
+import { BUILDINGS, type BuildingKind } from '../data/buildings';
 import { MAP_SIZE } from '../data/config';
 import { ENEMIES, type EnemyKind } from '../data/enemies';
 import type { Game } from './types';
@@ -17,7 +17,8 @@ export const NEIGHBORS: readonly [number, number, number][] = [
 ];
 
 export function isTarget(kind: EnemyKind, building: BuildingKind): boolean {
-  return ENEMIES[kind].targets === 'carrot' ? building === 'carrot' : building !== 'hedge';
+  if (ENEMIES[kind].targets === 'homes') return building === 'carrot' || building === 'hutch';
+  return !BUILDINGS[building].wall;
 }
 
 /**

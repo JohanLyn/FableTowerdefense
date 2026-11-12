@@ -54,9 +54,11 @@ Three resources, each with one job:
 
 Design notes:
 
-- **Bunnies multiply.** Each Hutch adds +1 bunny per dawn, +1 more per 5 bunnies already housed
-  in it (up to its cap). Early Hutches pay off hugely later. This is the game's interest
-  mechanic, and it is thematically correct.
+- **Bunnies multiply.** Every dawn the warren gains +1 bunny per Hutch and +1 more per 5
+  bunnies it already has, up to total housing. Early Hutches pay off hugely later. This is the
+  game's interest mechanic, and it is thematically correct. The Golden Carrot houses the first 4.
+- **Losing housing hurts.** Bunnies without a home leave, and crews are assigned oldest
+  building first, so a destroyed Hutch switches off the newest buildings.
 - **Volts are a global budget, not a wire network.** Generation versus draw. If draw exceeds
   generation, electric towers brown out and fire at half speed. Simple to read, still forces
   planning. (A wired grid with pylons is a possible later map modifier.)
@@ -67,8 +69,8 @@ Buildings:
 
 | Building | Cost | Crew | Effect |
 |---|---|---|---|
-| Carrot Patch | 40 | 1 | +15 carrots per day |
-| Hutch | 60 | 0 | Houses 6 bunnies, grows population at dawn |
+| Carrot Patch | 40 | 1 | +20 carrots per day |
+| Hutch | 60 | 0 | Houses 6 bunnies, arrives with 2, grows population at dawn |
 | Hamster Wheel | 50 | 1 | +10 Volts |
 | Workshop | 120 | 2 | Unlocks tier 3 upgrades and specializations |
 | Hedge Wall | 5 | 0 | Cheap, blocks ground enemies, weak to mowers |
@@ -150,7 +152,7 @@ Every enemy has a target preference, which is what makes base layout matter.
 | Slug | Slow, huge health, immune to Sticky | Golden Carrot | Sustained damage, Spicy |
 | Crow | Flies over walls | Carrot Patches (steals carrots) | Beehive, Parsnip Sniper |
 | Mole | Tunnels under walls, surfaces inside | Economy buildings | Thumper, Steamed, inner defenses |
-| Robo-Mower | Fast, shreds Hedges | Walls then Hutches | Picket Fences, stuns, Rakes |
+| Robo-Mower | Fast, shreds Hedges | Hutches and the Golden Carrot | Picket Fences, stuns, Rakes |
 | Scarecrow | Fear aura, towers in range fire slower | Towers | Outrange it |
 | Sprinkler Bot | Heals allies, makes them Wet | Follows the pack | Use its Wet against it with Tesla |
 | Leaf Blower Gnome | Pushes projectiles off course, clears Honey | Support towers | Lightning and bees ignore it |

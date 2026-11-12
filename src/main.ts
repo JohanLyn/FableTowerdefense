@@ -1,9 +1,9 @@
 import './style.css';
-import { BUILDABLE } from './data/buildings';
+import { BUILDABLE, BUILDINGS } from './data/buildings';
 import { DT, MAP_SIZE } from './data/config';
 import { NIGHTS } from './data/waves';
 import { Renderer, type Tool } from './render/renderer';
-import { build, buildCost, canPlace, createGame, sell, startNight, step } from './sim/game';
+import { build, canAfford, canPlace, createGame, sell, startNight, step } from './sim/game';
 import type { Game } from './sim/types';
 import { Hud } from './ui/hud';
 
@@ -40,10 +40,10 @@ hud.showOverlay(
   `<p>The Farmer wants his garden back. Keep the <b>Golden Carrot</b> alive for ${NIGHTS.length} nights.</p>
    <ul>
      <li>Build by day. The red arrows show where tonight's attack comes from.</li>
-     <li><b>Carrot Launchers</b> snipe one target. <b>Tesla Hutches</b> chain lightning through crowds.</li>
-     <li><b>Hedges</b> are cheap walls. Drag to paint a row. Gnomes go round them, mowers go through them.</li>
-     <li>Gnomes attack your towers. Mowers head straight for the Carrot.</li>
-     <li>Everything is repaired at dawn. You can build at night, but it costs 50% more.</li>
+     <li>Towers, farms and wheels each need a <b>bunny</b>. <b>Hutches</b> house more, and bunnies multiply every dawn.</li>
+     <li><b>Carrot Patches</b> pay out every dawn. <b>Tesla Hutches</b> need Volts from <b>Hamster Wheels</b>.</li>
+     <li>Gnomes attack whatever building is nearest. Mowers hunt Hutches and the Carrot, and shred Hedges.</li>
+     <li>Drag to paint walls. Everything is repaired at dawn. Building at night costs 50% more.</li>
    </ul>`,
   'Defend the Carrot',
 );
@@ -75,8 +75,8 @@ canvas.addEventListener('pointermove', (ev) => {
   const next = tileFromEvent(ev);
   const moved = next?.x !== hover?.x || next?.y !== hover?.y;
   hover = next;
-  // Dragging paints hedges, so a wall does not take one click per tile.
-  if (painting && moved && tool === 'hedge') useTool();
+  // Dragging paints walls, so a wall does not take one click per tile.
+  if (painting && moved && tool && tool !== 'sell' && BUILDINGS[tool].wall) useTool();
 });
 
 const stopPainting = (ev: PointerEvent): void => {
@@ -109,9 +109,10 @@ window.addEventListener('keydown', (ev) => {
 // -------------------------------------------------------------------- loop
 
 function fit(): void {
-  renderer.resize(Math.floor(Math.min(stage.clientWidth, stage.clientHeight) - 8));
+  renderer.resize(Math.max(120, Math.floor(Math.min(stage.clientWidth, stage.clientHeight) - 8)));
 }
-window.addEventListener('resize', fit);
+// The stage changes size when the bars wrap, not only when the window does.
+new ResizeObserver(fit).observe(stage);
 fit();
 
 let last = performance.now();
@@ -150,7 +151,7 @@ function frame(now: number): void {
   }
 
   const valid =
-    !!hover && !!tool && tool !== 'sell' && canPlace(game, tool, hover.x, hover.y) && game.carrots >= buildCost(game, tool);
+    !!hover && !!tool && tool !== 'sell' && canPlace(game, tool, hover.x, hover.y) && canAfford(game, tool);
   renderer.draw(game, running ? acc / DT : 1, dt, { hover, tool, valid });
   hud.update(game, tool, speed);
   requestAnimationFrame(frame);

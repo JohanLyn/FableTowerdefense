@@ -21,42 +21,28 @@ export interface NightDef {
   hpMult: number;
 }
 
+/** Gnomes trickle in over about 22 seconds, mowers follow from second 6. */
+function night(hpMult: number, gnomes: number, mowers: number, dirs: Dir[]): NightDef {
+  const groups: WaveGroup[] = [{ kind: 'gnome', count: gnomes, dirs, start: 1, interval: 22 / gnomes }];
+  if (mowers > 0) groups.push({ kind: 'mower', count: mowers, dirs, start: 6, interval: 18 / mowers });
+  return { groups, hpMult, reward: 0 };
+}
+
+const ALL: Dir[] = ['N', 'E', 'S', 'W'];
+
 export const NIGHTS: NightDef[] = [
-  {
-    reward: 80,
-    hpMult: 1,
-    groups: [{ kind: 'gnome', count: 10, dirs: ['N'], start: 1, interval: 1.2 }],
-  },
-  {
-    reward: 100,
-    hpMult: 1.15,
-    groups: [{ kind: 'gnome', count: 18, dirs: ['N', 'E'], start: 1, interval: 0.9 }],
-  },
-  {
-    reward: 120,
-    hpMult: 1.35,
-    groups: [
-      { kind: 'gnome', count: 24, dirs: ['W', 'S'], start: 1, interval: 0.7 },
-      { kind: 'mower', count: 6, dirs: ['W', 'S'], start: 8, interval: 2.5 },
-    ],
-  },
-  {
-    reward: 150,
-    hpMult: 1.5,
-    groups: [
-      { kind: 'gnome', count: 36, dirs: ['N', 'E', 'S'], start: 1, interval: 0.6 },
-      { kind: 'mower', count: 10, dirs: ['E', 'S'], start: 6, interval: 1.8 },
-    ],
-  },
-  {
-    reward: 0,
-    hpMult: 1.8,
-    groups: [
-      { kind: 'gnome', count: 52, dirs: ['N', 'E', 'S', 'W'], start: 1, interval: 0.45 },
-      { kind: 'mower', count: 18, dirs: ['N', 'E', 'S', 'W'], start: 5, interval: 1.3 },
-    ],
-  },
+  night(1.0, 10, 0, ['N']),
+  night(1.1, 16, 0, ['N', 'E']),
+  night(1.2, 20, 4, ['W', 'S']),
+  night(1.3, 26, 6, ['N', 'E', 'S']),
+  night(1.45, 32, 9, ALL),
+  night(1.6, 38, 12, ['E', 'W']),
+  night(1.8, 44, 15, ['N', 'S', 'W']),
+  night(2.0, 50, 18, ALL),
+  night(2.2, 56, 21, ALL),
+  night(2.4, 64, 25, ALL),
 ];
+NIGHTS.forEach((n, i) => (n.reward = i === NIGHTS.length - 1 ? 0 : 60 + 15 * i));
 
 /** Enemy counts and attack directions for a night, for the day-time preview. */
 export function nightPreview(night: number): { dirs: Dir[]; counts: Partial<Record<EnemyKind, number>> } {

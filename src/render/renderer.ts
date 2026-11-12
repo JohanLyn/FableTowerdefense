@@ -58,6 +58,20 @@ export class Renderer {
           this.fx.push({ type: 'puff', age: 0, life: 0.35, x: ev.x, y: ev.y, color: '#fff3c4', size: 0.6 });
           this.fx.push({ type: 'text', age: 0, life: 0.8, x: ev.x, y: ev.y, text: `+${ev.bounty}`, color: '#ffb347' });
           break;
+        case 'income':
+          this.fx.push({ type: 'text', age: 0, life: 1.4, x: ev.x, y: ev.y, text: `+${ev.amount}`, color: '#ffb347' });
+          break;
+        case 'born':
+          this.fx.push({
+            type: 'text',
+            age: 0,
+            life: 2,
+            x: ev.x,
+            y: ev.y - 1,
+            text: `+${ev.count} ${ev.count === 1 ? 'bunny' : 'bunnies'}`,
+            color: '#ffd6e0',
+          });
+          break;
         case 'destroyed':
           this.fx.push({ type: 'puff', age: 0, life: 0.5, x: ev.x, y: ev.y, color: '#6b4a2b', size: 1.1 });
           break;
@@ -154,14 +168,157 @@ export class Renderer {
     const cy = b.y + b.size / 2;
     switch (b.kind) {
       case 'carrot':
-        return this.drawGoldenCarrot(cx, cy);
+        this.drawGoldenCarrot(cx, cy);
+        break;
       case 'hedge':
-        return this.drawHedge(g, b);
+        this.drawHedge(g, b);
+        break;
+      case 'fence':
+        this.drawFence(g, b);
+        break;
       case 'launcher':
-        return this.drawLauncher(b, cx, cy);
+        this.drawLauncher(b, cx, cy);
+        break;
       case 'tesla':
-        return this.drawTesla(b, cx, cy);
+        this.drawTesla(b, cx, cy, g.brownout);
+        break;
+      case 'patch':
+        this.drawPatch(b);
+        break;
+      case 'hutch':
+        this.drawHutch(b, cx, cy);
+        break;
+      case 'wheel':
+        this.drawWheel(b, cx, cy);
+        break;
     }
+    if (!b.staffed && BUILDINGS[b.kind].crew) this.drawUnstaffed(cx, cy);
+  }
+
+  private joins(g: Game, b: Building, dx: number, dy: number): boolean {
+    const id = g.grid[(b.y + dy) * N + b.x + dx];
+    return id !== 0 && g.buildings.get(id)?.kind === b.kind;
+  }
+
+  private drawFence(g: Game, b: Building): void {
+    const ctx = this.ctx;
+    ctx.fillStyle = '#f1e9d8';
+    ctx.strokeStyle = '#9c8f76';
+    ctx.lineWidth = 0.04;
+    // Rails run toward neighbouring fence tiles.
+    if (this.joins(g, b, 1, 0)) ctx.fillRect(b.x + 0.5, b.y + 0.42, 1, 0.16);
+    if (this.joins(g, b, 0, 1)) ctx.fillRect(b.x + 0.42, b.y + 0.5, 0.16, 1);
+    for (const [px, py] of [
+      [0.3, 0.3],
+      [0.7, 0.3],
+      [0.3, 0.7],
+      [0.7, 0.7],
+    ]) {
+      ctx.beginPath();
+      ctx.moveTo(b.x + px, b.y + py - 0.2);
+      ctx.lineTo(b.x + px + 0.13, b.y + py - 0.05);
+      ctx.lineTo(b.x + px + 0.13, b.y + py + 0.17);
+      ctx.lineTo(b.x + px - 0.13, b.y + py + 0.17);
+      ctx.lineTo(b.x + px - 0.13, b.y + py - 0.05);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
+  private drawPatch(b: Building): void {
+    const ctx = this.ctx;
+    ctx.fillStyle = '#7a4f2a';
+    roundRect(ctx, b.x + 0.06, b.y + 0.06, 0.88, 0.88, 0.12);
+    ctx.fill();
+    ctx.strokeStyle = '#5e3a1c';
+    ctx.lineWidth = 0.04;
+    for (const y of [0.36, 0.64]) {
+      ctx.beginPath();
+      ctx.moveTo(b.x + 0.14, b.y + y + 0.14);
+      ctx.lineTo(b.x + 0.86, b.y + y + 0.14);
+      ctx.stroke();
+    }
+    for (const y of [0.3, 0.58]) {
+      for (const x of [0.26, 0.5, 0.74]) {
+        const sway = b.staffed ? Math.sin(this.time * 2 + x * 9 + y * 5) * 0.03 : 0;
+        ctx.fillStyle = '#ff8c1a';
+        ctx.beginPath();
+        ctx.arc(b.x + x, b.y + y + 0.1, 0.07, 0, TAU);
+        ctx.fill();
+        ctx.strokeStyle = b.staffed ? '#4caf50' : '#8a9a6a';
+        ctx.lineWidth = 0.05;
+        ctx.beginPath();
+        ctx.moveTo(b.x + x, b.y + y + 0.06);
+        ctx.lineTo(b.x + x + sway, b.y + y - 0.1);
+        ctx.stroke();
+      }
+    }
+  }
+
+  private drawHutch(b: Building, cx: number, cy: number): void {
+    const ctx = this.ctx;
+    ctx.fillStyle = '#c98f55';
+    ctx.strokeStyle = '#6e4420';
+    ctx.lineWidth = 0.05;
+    roundRect(ctx, b.x + 0.14, b.y + 0.4, 0.72, 0.5, 0.06);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#b5432e';
+    ctx.beginPath();
+    ctx.moveTo(b.x + 0.04, b.y + 0.46);
+    ctx.lineTo(cx, b.y + 0.06);
+    ctx.lineTo(b.x + 0.96, b.y + 0.46);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#3b2412';
+    ctx.beginPath();
+    ctx.arc(cx, cy + 0.26, 0.15, Math.PI, 0);
+    ctx.lineTo(cx + 0.15, cy + 0.4);
+    ctx.lineTo(cx - 0.15, cy + 0.4);
+    ctx.closePath();
+    ctx.fill();
+    // Somebody is always peeking out.
+    this.drawRabbit(cx, cy + 0.3, 0.1, '#f4f1ea');
+  }
+
+  private drawWheel(b: Building, cx: number, cy: number): void {
+    const ctx = this.ctx;
+    ctx.fillStyle = '#44505e';
+    roundRect(ctx, b.x + 0.1, b.y + 0.78, 0.8, 0.14, 0.05);
+    ctx.fill();
+    ctx.strokeStyle = '#d9a441';
+    ctx.lineWidth = 0.07;
+    ctx.beginPath();
+    ctx.arc(cx, cy - 0.04, 0.36, 0, TAU);
+    ctx.stroke();
+    ctx.lineWidth = 0.035;
+    const spin = b.staffed ? this.time * 6 : 0.4;
+    for (let i = 0; i < 4; i++) {
+      const a = spin + (i * Math.PI) / 4;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a) * 0.36, cy - 0.04 + Math.sin(a) * 0.36);
+      ctx.lineTo(cx - Math.cos(a) * 0.36, cy - 0.04 - Math.sin(a) * 0.36);
+      ctx.stroke();
+    }
+    if (b.staffed) {
+      const bounce = Math.abs(Math.sin(this.time * 12)) * 0.04;
+      this.drawRabbit(cx, cy + 0.1 - bounce, 0.14, '#f4f1ea');
+    }
+  }
+
+  /** A sleepy marker over buildings that have no bunny to run them. */
+  private drawUnstaffed(cx: number, cy: number): void {
+    const ctx = this.ctx;
+    ctx.fillStyle = 'rgba(20, 20, 30, 0.45)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 0.46, 0, TAU);
+    ctx.fill();
+    ctx.font = 'bold 0.42px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('Zz', cx, cy + 0.14 + Math.sin(this.time * 2) * 0.04);
   }
 
   private drawGoldenCarrot(cx: number, cy: number): void {
@@ -212,16 +369,12 @@ export class Renderer {
 
   private drawHedge(g: Game, b: Building): void {
     const ctx = this.ctx;
-    const joins = (dx: number, dy: number): boolean => {
-      const id = g.grid[(b.y + dy) * N + b.x + dx];
-      return id !== 0 && g.buildings.get(id)?.kind === 'hedge';
-    };
     ctx.fillStyle = '#2f7d32';
     roundRect(ctx, b.x + 0.08, b.y + 0.08, 0.84, 0.84, 0.28);
     ctx.fill();
     // Bridge the gap to neighbouring hedges so a row reads as one wall.
-    if (joins(1, 0)) ctx.fillRect(b.x + 0.6, b.y + 0.14, 0.8, 0.72);
-    if (joins(0, 1)) ctx.fillRect(b.x + 0.14, b.y + 0.6, 0.72, 0.8);
+    if (this.joins(g, b, 1, 0)) ctx.fillRect(b.x + 0.6, b.y + 0.14, 0.8, 0.72);
+    if (this.joins(g, b, 0, 1)) ctx.fillRect(b.x + 0.14, b.y + 0.6, 0.72, 0.8);
     ctx.fillStyle = '#4caf50';
     for (const [x, y] of [
       [0.32, 0.34],
@@ -261,9 +414,9 @@ export class Renderer {
     this.drawRabbit(cx, cy + 0.04, 0.2, '#f4f1ea');
   }
 
-  private drawTesla(b: Building, cx: number, cy: number): void {
+  private drawTesla(b: Building, cx: number, cy: number, brownout: boolean): void {
     const ctx = this.ctx;
-    const firing = b.cooldown > BUILDINGS.tesla.cooldown! - 0.2;
+    const firing = b.cooldown > BUILDINGS.tesla.cooldown! * (brownout ? 2 : 1) - 0.2;
     ctx.fillStyle = '#5b6470';
     ctx.strokeStyle = '#333a44';
     ctx.lineWidth = 0.06;
@@ -285,7 +438,7 @@ export class Renderer {
       ctx.fillRect(cx - 0.9, cy - 0.9, 1.8, 1.8);
     }
     // The rabbit wears the coil's dome as a helmet.
-    this.drawRabbit(cx, cy + 0.03, 0.19, firing ? '#e8fbff' : '#b9e6f5');
+    this.drawRabbit(cx, cy + 0.03, 0.19, firing ? '#e8fbff' : brownout ? '#b8a78a' : '#b9e6f5');
   }
 
   private drawRabbit(x: number, y: number, r: number, color: string): void {

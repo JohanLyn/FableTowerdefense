@@ -2,7 +2,7 @@ import { BUILDABLE, BUILDINGS, type BuildingKind } from '../data/buildings';
 import { ENEMIES, type EnemyKind } from '../data/enemies';
 import { NIGHTS, nightPreview, type Dir } from '../data/waves';
 import type { Tool } from '../render/renderer';
-import { buildCost, earlyBonus } from '../sim/game';
+import { buildCost, canAfford, earlyBonus, freeBunnies } from '../sim/game';
 import type { Game } from '../sim/types';
 
 const DIR_NAMES: Record<Dir, string> = { N: 'north', E: 'east', S: 'south', W: 'west' };
@@ -26,6 +26,10 @@ export interface HudHandlers {
 export class Hud {
   private toolButtons = new Map<Exclude<Tool, null>, { button: HTMLButtonElement; cost?: HTMLElement }>();
   private carrots = el('carrots');
+  private bunnies = el('bunnies');
+  private bunnyStat = el('bunny-stat');
+  private volts = el('volts');
+  private voltStat = el('volt-stat');
   private night = el('night');
   private status = el('status');
   private carrotHp = el('carrot-hp');
@@ -58,6 +62,10 @@ export class Hud {
 
   update(g: Game, tool: Tool, speed: number): void {
     setText(this.carrots, String(g.carrots));
+    setText(this.bunnies, `${g.crewUsed}/${g.bunnies} (${g.housing})`);
+    this.bunnyStat.classList.toggle('warn', freeBunnies(g) === 0);
+    setText(this.volts, `${g.voltDraw}/${g.voltSupply}`);
+    this.voltStat.classList.toggle('warn', g.brownout);
     setText(this.night, `Night ${g.night}/${NIGHTS.length}`);
     setText(this.status, statusLine(g));
     const carrot = g.buildings.get(g.carrotId);
@@ -66,9 +74,9 @@ export class Hud {
     for (const [kind, { button, cost }] of this.toolButtons) {
       button.classList.toggle('selected', kind === tool);
       if (kind === 'sell' || !cost) continue;
-      const price = buildCost(g, kind as BuildingKind);
-      setText(cost, `🥕 ${price}`);
-      button.classList.toggle('poor', g.carrots < price);
+      const crew = BUILDINGS[kind as BuildingKind].crew ?? 0;
+      setText(cost, `🥕 ${buildCost(g, kind as BuildingKind)}${crew ? ` 🐇 ${crew}` : ''}`);
+      button.classList.toggle('poor', !canAfford(g, kind as BuildingKind));
     }
 
     const bonus = earlyBonus(g);
@@ -101,7 +109,8 @@ export class Hud {
 function statusLine(g: Game): string {
   if (g.phase === 'night') {
     const left = g.enemies.length + g.spawnQueue.length;
-    return `Night: ${left} ${left === 1 ? 'enemy' : 'enemies'} left. Building costs 50% more.`;
+    const power = g.brownout ? ' Brown-out: Tesla Hutches at half speed!' : '';
+    return `Night: ${left} ${left === 1 ? 'enemy' : 'enemies'} left.${power}`;
   }
   if (g.phase !== 'day') return '';
   const { dirs, counts } = nightPreview(g.night);

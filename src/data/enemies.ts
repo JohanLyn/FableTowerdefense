@@ -13,9 +13,9 @@ export interface EnemyDef {
   bounty: number;
   /**
    * What it walks toward. 'buildings' means the nearest non-wall building,
-   * 'carrot' means straight for the Golden Carrot.
+   * 'homes' means the nearest Hutch or the Golden Carrot.
    */
-  targets: 'buildings' | 'carrot';
+  targets: 'buildings' | 'homes';
 }
 
 export const ENEMIES: Record<EnemyKind, EnemyDef> = {
@@ -26,7 +26,7 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
     damage: 5,
     attackCooldown: 1,
     hedgeMult: 1,
-    bounty: 5,
+    bounty: 4,
     targets: 'buildings',
   },
   mower: {
@@ -36,7 +36,7 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
     damage: 8,
     attackCooldown: 1,
     hedgeMult: 5,
-    bounty: 12,
-    targets: 'carrot',
+    bounty: 8,
+    targets: 'homes',
   },
 };

@@ -20,25 +20,33 @@ tests, `npm run build` type-checks and makes a static build in `dist/`.
 
 ## How to play
 
-- Build by day, defend by night. Survive 5 nights.
+- Build by day, defend by night. Survive 10 nights.
 - Red arrows at the map edge show where tonight's attack comes from.
-- Keys `1` to `3` pick a building, `4` sells, `Space` starts the night, `Esc` or right click
-  puts the tool away. Drag with the Hedge tool to paint a wall.
-- Gnomes attack your towers and walk round hedges. Mowers go straight for the Carrot and shred
-  hedges on the way.
+- **Bunnies** crew every tower, farm and wheel. Hutches house more, and bunnies multiply at
+  dawn: one per Hutch plus one per five bunnies, up to your housing.
+- **Carrot Patches** pay 20 carrots every dawn.
+- **Tesla Hutches** draw 5 Volts each. Hamster Wheels make 10. Run short and every Tesla Hutch
+  fires at half speed.
+- Gnomes attack whatever building is nearest and walk round walls. Mowers hunt Hutches and the
+  Carrot, and shred Hedges. Picket Fences stand up to them.
+- Lose a Hutch and its bunnies leave, which switches off your newest buildings.
+- Keys `1` to `7` pick a building, `8` sells, `Space` starts the night, `Esc` or right click
+  puts the tool away. Drag with a wall tool to paint a row.
 - Buildings are repaired at dawn. Building at night costs 50% more.
 
 ## Status
 
-Milestone 1 of the design (vertical slice) is playable:
+Milestones 1 and 2 of the design are playable:
 
-- One 24 x 24 map, the Golden Carrot, Carrot Launcher, Tesla Hutch and Hedge.
-- Garden Gnomes and Robo-Mowers over 5 nights, attacking from previewed directions.
-- Carrots come from kills, dawn rewards and ending the day early. Farms, Bunnies and Volts
-  arrive in milestone 2.
+- One 24 x 24 map, ten nights of Garden Gnomes and Robo-Mowers from previewed directions.
+- Carrot Launcher, Tesla Hutch, Hedge, Picket Fence, Carrot Patch, Hutch, Hamster Wheel.
+- Carrots, Bunnies and Volts.
 
-All numbers are first-pass. `tests/sim.test.ts` holds a balance guard: a scripted player with a
-plain ring of towers and no walls must win most seeds.
+Not built yet: status combos and the other towers (milestone 3), upgrades and the Workshop (4),
+the hero, Rakes and Burrow Holes (5), more enemies and bosses (6).
+
+All numbers are first-pass. `tests/sim.test.ts` holds a balance guard: a scripted player with
+farms, Hutches and rings of towers but no walls must win most seeds.
 
 ## Code layout
 

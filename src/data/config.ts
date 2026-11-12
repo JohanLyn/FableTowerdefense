@@ -8,6 +8,7 @@ export const BUILD_MARGIN = 2;
 
 export const START_CARROTS = 200;
 export const DAY_SECONDS = 45;
+export const START_BUNNIES = 4;
 /** Carrots per second of day skipped. */
 export const EARLY_BONUS_PER_SECOND = 0.5;
 /** Building at night costs this much more. */

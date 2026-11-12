@@ -16,6 +16,8 @@ export interface Building {
   cooldown: number;
   /** Direction of the last shot, radians. Used for drawing only. */
   aim: number;
+  /** Whether it has the bunnies it needs. Unstaffed buildings do nothing. */
+  staffed: boolean;
 }
 
 export interface Enemy {
@@ -61,6 +63,8 @@ export type GameEvent =
   | { type: 'destroyed'; x: number; y: number; kind: BuildingKind }
   | { type: 'bite'; x: number; y: number }
   | { type: 'dawn'; reward: number }
+  | { type: 'income'; x: number; y: number; amount: number }
+  | { type: 'born'; x: number; y: number; count: number }
   | { type: 'nightfall'; bonus: number };
 
 export interface Game {
@@ -73,6 +77,15 @@ export interface Game {
   dayTimer: number;
   carrots: number;
   kills: number;
+  /** Total bunny population. */
+  bunnies: number;
+  // Derived from buildings by refreshEconomy.
+  housing: number;
+  crewUsed: number;
+  voltSupply: number;
+  voltDraw: number;
+  /** Electric towers fire at half speed while draw exceeds supply. */
+  brownout: boolean;
   /** Building id per tile, 0 when empty. */
   grid: Int32Array;
   buildings: Map<number, Building>;

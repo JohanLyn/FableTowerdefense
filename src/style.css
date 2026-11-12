@@ -34,6 +34,10 @@ body {
   white-space: nowrap;
 }
 
+.stat.warn b {
+  color: #ff6b6b;
+}
+
 .stat.grow {
   flex: 1;
   min-width: 0;
@@ -64,6 +68,7 @@ body {
   position: relative;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -94,7 +99,7 @@ button {
   background: #3b5433;
   border: 2px solid #4f6f45;
   border-radius: 10px;
-  padding: 7px 12px;
+  padding: 6px 10px;
   cursor: pointer;
   line-height: 1.2;
 }
@@ -185,4 +190,18 @@ kbd {
 .card button {
   font-size: 17px;
   padding: 10px 26px;
+}
+
+@media (max-width: 640px) {
+  /* The night preview gets its own line rather than being cut off. */
+  .stat.grow {
+    flex-basis: 100%;
+    order: 9;
+    white-space: normal;
+    font-size: 13px;
+  }
+
+  kbd {
+    display: none;
+  }
 }

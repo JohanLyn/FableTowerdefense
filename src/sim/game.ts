@@ -7,6 +7,7 @@ import {
   MAP_SIZE,
   NIGHT_BUILD_MULT,
   SELL_REFUND,
+  START_BUNNIES,
   START_CARROTS,
   TICK_RATE,
 } from '../data/config';
@@ -31,6 +32,12 @@ export function createGame(seed: number): Game {
     dayTimer: 0,
     carrots: START_CARROTS,
     kills: 0,
+    bunnies: START_BUNNIES,
+    housing: 0,
+    crewUsed: 0,
+    voltSupply: 0,
+    voltDraw: 0,
+    brownout: false,
     grid: new Int32Array(N * N),
     buildings: new Map(),
     carrotId: 0,
@@ -70,11 +77,19 @@ export function canPlace(g: Game, kind: BuildingKind, x: number, y: number): boo
   return true;
 }
 
+export function freeBunnies(g: Game): number {
+  return g.bunnies - g.crewUsed;
+}
+
+/** Whether the player has the carrots and the spare bunnies for it. */
+export function canAfford(g: Game, kind: BuildingKind): boolean {
+  return g.carrots >= buildCost(g, kind) && freeBunnies(g) >= (BUILDINGS[kind].crew ?? 0);
+}
+
 export function build(g: Game, kind: BuildingKind, x: number, y: number): boolean {
   if (kind === 'carrot') return false;
-  const cost = buildCost(g, kind);
-  if (g.carrots < cost || !canPlace(g, kind, x, y)) return false;
-  g.carrots -= cost;
+  if (!canAfford(g, kind) || !canPlace(g, kind, x, y)) return false;
+  g.carrots -= buildCost(g, kind);
   place(g, kind, x, y);
   return true;
 }
@@ -164,7 +179,23 @@ function endNight(g: Game): void {
   g.night++;
   g.phase = 'day';
   g.dayTimer = DAY_SECONDS;
-  for (const b of g.buildings.values()) b.hp = b.maxHp;
+  let hutches = 0;
+  for (const b of g.buildings.values()) {
+    b.hp = b.maxHp;
+    const def = BUILDINGS[b.kind];
+    if (b.kind === 'hutch') hutches++;
+    if (def.income && b.staffed) {
+      g.carrots += def.income;
+      g.events.push({ type: 'income', x: b.x + b.size / 2, y: b.y + b.size / 2, amount: def.income });
+    }
+  }
+  // Bunnies multiply: every Hutch adds one, and so does every five bunnies.
+  const born = Math.min(g.housing - g.bunnies, hutches + Math.floor(g.bunnies / 5));
+  if (born > 0) {
+    g.bunnies += born;
+    g.events.push({ type: 'born', x: N / 2, y: N / 2, count: born });
+  }
+  refreshEconomy(g);
   g.fieldsDirty = true;
   g.events.push({ type: 'dawn', reward });
 }
@@ -183,11 +214,14 @@ function place(g: Game, kind: BuildingKind, x: number, y: number): Building {
     maxHp: def.hp,
     cooldown: 0,
     aim: -Math.PI / 2,
+    staffed: false,
   };
   g.buildings.set(b.id, b);
   for (let dy = 0; dy < b.size; dy++) {
     for (let dx = 0; dx < b.size; dx++) g.grid[(y + dy) * N + x + dx] = b.id;
   }
+  g.bunnies += def.newcomers ?? 0;
+  refreshEconomy(g);
   g.fieldsDirty = true;
   return b;
 }
@@ -197,7 +231,37 @@ function remove(g: Game, b: Building): void {
   for (let dy = 0; dy < b.size; dy++) {
     for (let dx = 0; dx < b.size; dx++) g.grid[(b.y + dy) * N + b.x + dx] = 0;
   }
+  refreshEconomy(g);
   g.fieldsDirty = true;
+}
+
+/**
+ * Recomputes housing, staffing and power from the buildings that exist.
+ * Bunnies without a home leave, and crews are handed out oldest building
+ * first, so losing a Hutch switches off the newest buildings.
+ */
+function refreshEconomy(g: Game): void {
+  let housing = 0;
+  for (const b of g.buildings.values()) housing += BUILDINGS[b.kind].housing ?? 0;
+  g.housing = housing;
+  g.bunnies = Math.min(g.bunnies, housing);
+
+  let free = g.bunnies;
+  let supply = 0;
+  let draw = 0;
+  for (const b of g.buildings.values()) {
+    const def = BUILDINGS[b.kind];
+    const crew = def.crew ?? 0;
+    b.staffed = crew <= free;
+    if (!b.staffed) continue;
+    free -= crew;
+    supply += def.volts ?? 0;
+    draw += def.draw ?? 0;
+  }
+  g.crewUsed = g.bunnies - free;
+  g.voltSupply = supply;
+  g.voltDraw = draw;
+  g.brownout = draw > supply;
 }
 
 function refreshFields(g: Game): void {
@@ -207,14 +271,14 @@ function refreshFields(g: Game): void {
 
 function stepTower(g: Game, b: Building): void {
   const def = BUILDINGS[b.kind];
-  if (def.range === undefined) return;
+  if (def.range === undefined || !b.staffed) return;
   if (b.cooldown > 0) b.cooldown -= DT;
   if (b.cooldown > 0) return;
   const cx = b.x + b.size / 2;
   const cy = b.y + b.size / 2;
   const target = nearestEnemy(g, cx, cy, def.range, null);
   if (!target) return;
-  b.cooldown = def.cooldown!;
+  b.cooldown = def.cooldown! * (def.draw && g.brownout ? 2 : 1);
   b.aim = Math.atan2(target.y - cy, target.x - cx);
 
   if (def.chains === undefined) {
