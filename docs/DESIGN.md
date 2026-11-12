@@ -12,7 +12,7 @@ rabbits in Tesla towers fry them.
 **Genre:** base defense survival with tower upgrade trees, status combos, a living economy and a
 controllable hero.
 **Platform:** browser, desktop and mobile, TypeScript.
-**Session:** one run is 20 nights, about 25 to 30 minutes. Endless mode after that.
+**Session:** one run is 10 nights, about 12 to 15 minutes. Endless mode after that.
 
 ## 2. Design pillars
 
@@ -28,7 +28,7 @@ controllable hero.
 ## 3. Core loop
 
 ```
-DAY (60 to 90 s, can be ended early for a carrot bonus)
+DAY (45 to 60 s, can be ended early for a carrot bonus)
   harvest income -> build and upgrade -> repair -> scout tonight's attack preview
 NIGHT (waves from 1 to 4 directions)
   towers fight -> hero moves and casts -> abilities on cooldown -> survive
@@ -117,8 +117,15 @@ are consumed and trigger a combo:
 
 ## 7. Hero and active abilities
 
-One hero per run, moved directly (click or tap to move, auto-attacks). Dies, then respawns at the
-nearest Burrow Hole after a timer that grows each night.
+One hero per run, under direct control but deliberately low on micro, so it never competes with
+building for the player's attention:
+
+- Click or tap a spot and the hero goes there, then **guards** that spot: auto-attacks anything
+  in reach and returns to it afterwards. No attack commands, no kiting required.
+- Abilities fire from where the hero stands (no aiming step), so each is one key or one tap.
+- Dies, then respawns at the nearest Burrow Hole after a timer that grows each night.
+
+The hero is a mobile plug for whichever side of the base is leaking, not an action character.
 
 | Hero | Style | Ability 1 | Ability 2 |
 |---|---|---|---|
@@ -148,13 +155,14 @@ Every enemy has a target preference, which is what makes base layout matter.
 | Sprinkler Bot | Heals allies, makes them Wet | Follows the pack | Use its Wet against it with Tesla |
 | Leaf Blower Gnome | Pushes projectiles off course, clears Honey | Support towers | Lightning and bees ignore it |
 
-Bosses: **The Ride-On** (night 5, a mower that drops gnomes), **Scarecrow King** (night 10,
-map-wide fear pulses), **The Combine** (night 15, eats walls to heal), **The Farmer** (night 20,
-in a tractor mech, three phases).
+Bosses: a mid-boss on night 5 and a final boss on night 10. The night 5 boss is drawn from
+**The Ride-On** (a mower that drops gnomes), **Scarecrow King** (map-wide fear pulses) and
+**The Combine** (eats walls to heal), and is shown in the threat preview from night 1 so the
+player can build toward it. Night 10 is always **The Farmer** in a tractor mech, three phases.
 
 ## 9. Run structure and progression
 
-- **Within a run:** 20 nights. After each night pick 1 of 3 **Warren Perks** (for example:
+- **Within a run:** 10 nights. After each night pick 1 of 3 **Warren Perks** (for example:
   "Hutches hold +2", "Rakes reset themselves", "Conducted also stuns"). This gives runs variety
   without making the game a full roguelike.
 - **Between runs:** earn **Golden Seeds** from nights survived. Spend them to unlock towers,
@@ -216,16 +224,21 @@ tests/        headless simulation tests
 | 3 | **Combos** | Four statuses, six combos, adjacency links, remaining towers |
 | 4 | **Upgrades** | Three tiers and two specializations per tower, Workshop |
 | 5 | **Hero** | Sergeant Fluff, hero abilities, Warren abilities, Burrow Holes |
-| 6 | **Full run** | All enemies, four bosses, 20 nights, Warren Perks |
+| 6 | **Full run** | All enemies, four bosses, 10 nights, Warren Perks |
 | 7 | **Meta and polish** | Golden Seeds, unlocks, more maps and heroes, touch controls, audio, juice |
 
 Milestone 1 is the test of the whole idea: if building a base and watching rabbits zap gnomes is
 not fun with two towers, more content will not fix it.
 
-## 14. Open questions
+## 14. Decisions and open questions
 
-1. **Title.** "Warren Peace" is a placeholder. Alternatives: "Hare Trigger", "Volt Warren".
-2. **Run length.** 20 nights in about 30 minutes, or shorter 10-night runs better suited to mobile?
-3. **Hero control.** Direct control as designed, or a simpler hero that is only placed like a
-   movable tower?
-4. **All numbers in this document are first guesses** and have not been play-tested.
+Decided:
+
+- Runs are short: 10 nights.
+- The hero is directly controlled, using the low-micro guard model in section 7.
+
+Open:
+
+1. **Title.** "Warren Peace" is a placeholder, to be decided later.
+2. **All numbers in this document are first guesses** and have not been play-tested. With 10
+   nights, bunny growth and perk pacing in particular need tuning in milestone 2.
