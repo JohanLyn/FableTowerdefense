@@ -201,7 +201,8 @@ player can build toward it. Night 10 is always **The Farmer** in a tractor mech,
 - **Pathfinding:** one flow field per target type over the tile grid, recomputed when buildings
   change. Walls are high-cost tiles, not impassable ones, so enemies chew through a wall when
   the detour is too long. This prevents full wall-off exploits.
-- **Grid:** 48 x 48 tiles for the first map, buildings are 1x1 or 2x2.
+- **Grid:** 24 x 24 tiles for the first map with the whole map on screen, buildings are 1x1 or 2x2.
+  Larger maps need a pan and zoom camera first.
 - **Saves:** meta progression in localStorage. Mid-run save is a later milestone.
 
 ```
