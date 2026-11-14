@@ -30,28 +30,36 @@ tests, `npm run build` type-checks and makes a static build in `dist/`.
 - Gnomes attack whatever building is nearest and walk round walls. Mowers hunt Hutches and the
   Carrot, and shred Hedges. Picket Fences stand up to them.
 - Lose a Hutch and its bunnies leave, which switches off your newest buildings.
-- Keys `1` to `7` pick a building, `8` sells, `Space` starts the night, `Esc` or right click
-  puts the tool away. Drag with a wall tool to paint a row.
+- Some towers leave a **status** on enemies: Wet (Sprinkler), Sticky (Honey Pot), Zapped (Tesla
+  Hutch), Spicy (Chili Flamer). A second, different status on the same enemy uses both up and
+  sets off a **combo**. The Combos button in the game lists all six.
+- Buildings that share an edge can boost each other, shown by a glowing bar: Sprinkler + Tesla
+  Hutch, Honey Pot + Beehive, Hamster Wheel + Tesla Hutch, and three of the same tower in a row.
+- Keys `1` to `0` then `Q`, `W`, `E` pick a building, `X` sells, `Space` starts the night, `Esc`
+  or right click puts the tool away. Drag with a wall tool to paint a row.
 - Buildings are repaired at dawn. Building at night costs 50% more.
 
 ## Status
 
-Milestones 1 and 2 of the design are playable:
+Milestones 1 to 3 of the design are playable:
 
 - One 24 x 24 map, ten nights of Garden Gnomes and Robo-Mowers from previewed directions.
-- Carrot Launcher, Tesla Hutch, Hedge, Picket Fence, Carrot Patch, Hutch, Hamster Wheel.
-- Carrots, Bunnies and Volts.
+- Eight towers: Carrot Launcher, Tesla Hutch, Cabbage Mortar, Sprinkler, Honey Pot, Chili
+  Flamer, Beehive, Thumper.
+- Hedge, Picket Fence, Carrot Patch, Hutch, Hamster Wheel. Carrots, Bunnies and Volts.
+- Four statuses, six combos and four side-by-side bonuses.
 
-Not built yet: status combos and the other towers (milestone 3), upgrades and the Workshop (4),
-the hero, Rakes and Burrow Holes (5), more enemies and bosses (6).
+Not built yet: upgrades and the Workshop (milestone 4), the hero, Rakes and Burrow Holes (5),
+more enemies and bosses (6).
 
 All numbers are first-pass. `tests/sim.test.ts` holds a balance guard: a scripted player with
-farms, Hutches and rings of towers but no walls must win most seeds.
+farms, Hutches and rings of Launchers and Tesla Hutches but no walls must win most seeds.
+`tests/combos.test.ts` pins down every status, combo, new tower and side-by-side bonus.
 
 ## Code layout
 
 ```
-src/data/     buildings, enemies, nights and tuning constants as plain data
+src/data/     buildings, enemies, nights, statuses and combos as plain data
 src/sim/      deterministic 30 Hz simulation, no DOM access
 src/render/   canvas renderer and visual effects
 src/ui/       HUD

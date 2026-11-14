@@ -1,5 +1,6 @@
 import { BUILDINGS, type BuildingKind } from '../data/buildings';
 import { BUILD_MARGIN, MAP_SIZE } from '../data/config';
+import { COMBOS, LINKS, STATUS_INFO } from '../data/statuses';
 import { nightPreview, type Dir } from '../data/waves';
 import type { Building, Enemy, Game, GameEvent } from '../sim/types';
 
@@ -18,7 +19,16 @@ export interface ViewState {
 type Fx =
   | { type: 'zap'; age: number; life: number; points: [number, number][] }
   | { type: 'puff'; age: number; life: number; x: number; y: number; color: string; size: number }
-  | { type: 'text'; age: number; life: number; x: number; y: number; text: string; color: string };
+  | { type: 'text'; age: number; life: number; x: number; y: number; text: string; color: string }
+  | { type: 'ring'; age: number; life: number; x: number; y: number; r: number; color: string }
+  | { type: 'flame'; age: number; life: number; x: number; y: number; angle: number; range: number; spread: number };
+
+/** Colour of the expanding ring each pulse tower gives off. */
+const PULSE_COLORS: Partial<Record<BuildingKind, string>> = {
+  sprinkler: STATUS_INFO.wet.color,
+  honey: STATUS_INFO.sticky.color,
+  thumper: '#ffffff',
+};
 
 /** Draws the game in tile units. Holds only visual state, never game state. */
 export class Renderer {
@@ -58,6 +68,22 @@ export class Renderer {
           this.fx.push({ type: 'puff', age: 0, life: 0.35, x: ev.x, y: ev.y, color: '#fff3c4', size: 0.6 });
           this.fx.push({ type: 'text', age: 0, life: 0.8, x: ev.x, y: ev.y, text: `+${ev.bounty}`, color: '#ffb347' });
           break;
+        case 'combo': {
+          const def = COMBOS[ev.combo];
+          this.fx.push({ type: 'ring', age: 0, life: 0.45, x: ev.x, y: ev.y, r: 1.1, color: def.color });
+          this.fx.push({ type: 'text', age: 0, life: 1.1, x: ev.x, y: ev.y - 0.3, text: `${def.name}!`, color: def.color });
+          break;
+        }
+        case 'pulse':
+          this.fx.push({ type: 'ring', age: 0, life: 0.4, x: ev.x, y: ev.y, r: ev.r, color: PULSE_COLORS[ev.kind] ?? '#ffffff' });
+          break;
+        case 'boom':
+          this.fx.push({ type: 'puff', age: 0, life: 0.35, x: ev.x, y: ev.y, color: '#b7e4a0', size: ev.r });
+          this.fx.push({ type: 'ring', age: 0, life: 0.35, x: ev.x, y: ev.y, r: ev.r, color: '#e9f7df' });
+          break;
+        case 'flame':
+          this.fx.push({ type: 'flame', age: 0, life: 0.3, x: ev.x, y: ev.y, angle: ev.angle, range: ev.range, spread: ev.spread });
+          break;
         case 'income':
           this.fx.push({ type: 'text', age: 0, life: 1.4, x: ev.x, y: ev.y, text: `+${ev.amount}`, color: '#ffb347' });
           break;
@@ -89,17 +115,36 @@ export class Renderer {
     this.drawGround();
     if (g.phase === 'day') this.drawThreats(nightPreview(g.night).dirs);
 
+    this.drawZones(g);
+    this.drawLinks(g);
     for (const b of g.buildings.values()) this.drawBuilding(g, b);
     for (const e of g.enemies) this.drawEnemy(e, alpha);
 
-    ctx.fillStyle = '#ff8c1a';
     for (const p of g.projectiles) {
       const x = p.px + (p.x - p.px) * alpha;
       const y = p.py + (p.y - p.py) * alpha;
+      if (p.kind === 'shell') {
+        // A cabbage on a lob: it swells and lifts at the top of its arc.
+        const arc = Math.sin(Math.PI * Math.min(1, p.t / p.dur));
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.beginPath();
+        ctx.ellipse(x, y, 0.16, 0.08, 0, 0, TAU);
+        ctx.fill();
+        ctx.fillStyle = '#8fd16a';
+        ctx.strokeStyle = '#4c8f2f';
+        ctx.lineWidth = 0.04;
+        ctx.beginPath();
+        ctx.arc(x, y - arc * 1.2, 0.16 + arc * 0.1, 0, TAU);
+        ctx.fill();
+        ctx.stroke();
+        continue;
+      }
+      ctx.fillStyle = '#ff8c1a';
       ctx.beginPath();
       ctx.arc(x, y, 0.11, 0, TAU);
       ctx.fill();
     }
+    this.drawBees(g, alpha);
 
     // Night falls as a blue wash under the effects, so lightning stays bright.
     const wantNight = g.phase === 'night' ? 1 : 0;
@@ -180,7 +225,25 @@ export class Renderer {
         this.drawLauncher(b, cx, cy);
         break;
       case 'tesla':
-        this.drawTesla(b, cx, cy, g.brownout);
+        this.drawTesla(b, cx, cy, g.brownout && !b.wired);
+        break;
+      case 'mortar':
+        this.drawMortar(b, cx, cy);
+        break;
+      case 'sprinkler':
+        this.drawSprinkler(b, cx, cy);
+        break;
+      case 'honey':
+        this.drawHoneyPot(b, cx, cy);
+        break;
+      case 'flamer':
+        this.drawFlamer(b, cx, cy);
+        break;
+      case 'beehive':
+        this.drawBeehive(cx, cy);
+        break;
+      case 'thumper':
+        this.drawThumper(b, cx, cy);
         break;
       case 'patch':
         this.drawPatch(b);
@@ -193,6 +256,191 @@ export class Renderer {
         break;
     }
     if (!b.staffed && BUILDINGS[b.kind].crew) this.drawUnstaffed(cx, cy);
+  }
+
+  private drawZones(g: Game): void {
+    const ctx = this.ctx;
+    for (const z of g.zones) {
+      ctx.globalAlpha = Math.min(1, z.time) * 0.5;
+      ctx.fillStyle = STATUS_INFO.sticky.color;
+      ctx.beginPath();
+      ctx.arc(z.x, z.y, z.r, 0, TAU);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /** Glowing connectors between buildings that are boosting each other. */
+  private drawLinks(g: Game): void {
+    const ctx = this.ctx;
+    const pulse = 0.6 + 0.4 * Math.sin(this.time * 3);
+    for (const l of g.links) {
+      ctx.strokeStyle = LINKS[l.kind].color;
+      ctx.globalAlpha = (l.kind === 'row' ? 0.45 : 0.85) * pulse;
+      ctx.lineWidth = 0.3;
+      ctx.beginPath();
+      ctx.moveTo(l.ax, l.ay);
+      ctx.lineTo(l.bx, l.by);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  private drawBees(g: Game, alpha: number): void {
+    const ctx = this.ctx;
+    for (const b of g.buildings.values()) {
+      if (b.kind !== 'beehive') continue;
+      const target = b.targetId ? g.enemies.find((e) => e.id === b.targetId) : undefined;
+      const cx = target ? target.px + (target.x - target.px) * alpha : b.x + 0.5;
+      const cy = target ? target.py + (target.y - target.py) * alpha : b.y + 0.5;
+      const spread = target ? 0.3 : 0.5;
+      for (let i = 0; i < 5; i++) {
+        const a = this.time * (5 + i) + i * 1.3 + b.id;
+        const x = cx + Math.cos(a) * spread;
+        const y = cy - 0.1 + Math.sin(a * 1.3) * spread * 0.7;
+        ctx.fillStyle = '#ffd43b';
+        ctx.beginPath();
+        ctx.arc(x, y, 0.055, 0, TAU);
+        ctx.fill();
+        ctx.fillStyle = '#222';
+        ctx.fillRect(x - 0.015, y - 0.05, 0.03, 0.1);
+      }
+    }
+  }
+
+  private base(b: Building, fill: string, stroke: string): void {
+    const ctx = this.ctx;
+    ctx.fillStyle = fill;
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = 0.06;
+    ctx.beginPath();
+    ctx.arc(b.x + 0.5, b.y + 0.5, 0.42, 0, TAU);
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  private drawMortar(b: Building, cx: number, cy: number): void {
+    const ctx = this.ctx;
+    this.base(b, '#6f7d5a', '#3d4a2c');
+    const recoil = Math.max(0, b.cooldown - (BUILDINGS.mortar.cooldown! - 0.2)) * 0.6;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(b.aim);
+    ctx.fillStyle = '#39424e';
+    roundRect(ctx, -0.1 - recoil, -0.17, 0.55, 0.34, 0.08);
+    ctx.fill();
+    ctx.fillStyle = '#8fd16a';
+    ctx.beginPath();
+    ctx.arc(0.42 - recoil, 0, 0.12, 0, TAU);
+    ctx.fill();
+    ctx.restore();
+    this.drawRabbit(cx - Math.cos(b.aim) * 0.16, cy - Math.sin(b.aim) * 0.16 + 0.05, 0.15, '#e6ddcf');
+  }
+
+  private drawSprinkler(b: Building, cx: number, cy: number): void {
+    const ctx = this.ctx;
+    this.base(b, '#3f7fbf', '#234a73');
+    const spin = b.staffed ? this.time * (b.cooldown > 0 ? 7 : 1.5) : 0;
+    ctx.strokeStyle = '#cfe8ff';
+    ctx.lineWidth = 0.08;
+    for (let i = 0; i < 3; i++) {
+      const a = spin + (i * TAU) / 3;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(a) * 0.36, cy + Math.sin(a) * 0.36);
+      ctx.stroke();
+      if (b.cooldown > 0) {
+        ctx.fillStyle = STATUS_INFO.wet.color;
+        ctx.beginPath();
+        ctx.arc(cx + Math.cos(a + 0.3) * 0.6, cy + Math.sin(a + 0.3) * 0.6, 0.06, 0, TAU);
+        ctx.fill();
+      }
+    }
+    this.drawRabbit(cx, cy + 0.03, 0.13, '#eaf6ff');
+  }
+
+  private drawHoneyPot(b: Building, cx: number, cy: number): void {
+    const ctx = this.ctx;
+    ctx.fillStyle = '#c77d1a';
+    ctx.strokeStyle = '#7a4a0c';
+    ctx.lineWidth = 0.06;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 0.08, 0.38, 0.34, 0, 0, TAU);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#ffd43b';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 0.16, 0.26, 0.1, 0, 0, TAU);
+    ctx.fill();
+    // A drip that grows and falls.
+    const drip = (this.time * 0.6 + b.id * 0.37) % 1;
+    ctx.beginPath();
+    ctx.ellipse(cx + 0.2, cy - 0.1 + drip * 0.3, 0.05, 0.05 + drip * 0.06, 0, 0, TAU);
+    ctx.fill();
+    this.drawRabbit(cx - 0.04, cy - 0.2, 0.11, '#fff4d6');
+  }
+
+  private drawFlamer(b: Building, cx: number, cy: number): void {
+    const ctx = this.ctx;
+    this.base(b, '#8c2f1b', '#4f170b');
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(b.aim);
+    // A chili pepper for a nozzle.
+    ctx.fillStyle = '#e03131';
+    ctx.beginPath();
+    ctx.moveTo(0, -0.12);
+    ctx.quadraticCurveTo(0.45, -0.16, 0.6, 0.04);
+    ctx.quadraticCurveTo(0.35, 0.12, 0, 0.12);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#2f9e44';
+    ctx.fillRect(-0.06, -0.07, 0.1, 0.14);
+    ctx.restore();
+    this.drawRabbit(cx - Math.cos(b.aim) * 0.14, cy - Math.sin(b.aim) * 0.14 + 0.04, 0.15, '#ffe3d6');
+  }
+
+  private drawBeehive(cx: number, cy: number): void {
+    const ctx = this.ctx;
+    ctx.strokeStyle = '#8a5a00';
+    ctx.lineWidth = 0.04;
+    for (const [dy, w] of [
+      [0.24, 0.4],
+      [0.06, 0.36],
+      [-0.12, 0.28],
+      [-0.27, 0.17],
+    ]) {
+      ctx.fillStyle = dy === 0.06 || dy === -0.27 ? '#f2b21b' : '#ffd43b';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + dy, w, 0.12, 0, 0, TAU);
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#3b2412';
+    ctx.beginPath();
+    ctx.arc(cx, cy + 0.22, 0.07, 0, TAU);
+    ctx.fill();
+  }
+
+  private drawThumper(b: Building, cx: number, cy: number): void {
+    const ctx = this.ctx;
+    const def = BUILDINGS.thumper;
+    // The drum skin flexes just after a thump and the rabbit lands on it.
+    const sinceThump = def.cooldown! - b.cooldown;
+    const flex = b.cooldown > 0 && sinceThump < 0.3 ? 1 - sinceThump / 0.3 : 0;
+    const windUp = b.cooldown > 0 && b.cooldown < 0.5 ? 1 - b.cooldown / 0.5 : 0;
+    ctx.fillStyle = '#a23e48';
+    ctx.strokeStyle = '#5c1f26';
+    ctx.lineWidth = 0.06;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 0.43, 0, TAU);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#f3e3c3';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 0.33 + flex * 0.04, 0, TAU);
+    ctx.fill();
+    this.drawRabbit(cx, cy + 0.04 - windUp * 0.25, 0.17 + windUp * 0.03, '#f4f1ea');
   }
 
   private joins(g: Game, b: Building, dx: number, dy: number): boolean {
@@ -487,6 +735,32 @@ export class Renderer {
     ctx.beginPath();
     ctx.ellipse(x, y + 0.3, 0.28, 0.1, 0, 0, TAU);
     ctx.fill();
+    if (e.status) {
+      // A coloured halo at its feet shows the status it carries.
+      ctx.strokeStyle = STATUS_INFO[e.status].color;
+      ctx.lineWidth = 0.09;
+      ctx.beginPath();
+      ctx.ellipse(x, y + 0.3, 0.36, 0.15, 0, 0, TAU);
+      ctx.stroke();
+    }
+    if (e.vulnerable > 0) {
+      ctx.strokeStyle = COMBOS.caramelized.color;
+      ctx.lineWidth = 0.05;
+      ctx.setLineDash([0.1, 0.08]);
+      ctx.beginPath();
+      ctx.arc(x, y, 0.45, 0, TAU);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    if (e.stun > 0) {
+      ctx.fillStyle = '#ffffff';
+      for (let i = 0; i < 3; i++) {
+        const a = this.time * 6 + (i * TAU) / 3;
+        ctx.beginPath();
+        ctx.arc(x + Math.cos(a) * 0.22, y - 0.6 + Math.sin(a) * 0.07, 0.05, 0, TAU);
+        ctx.fill();
+      }
+    }
 
     if (e.kind === 'gnome') {
       const hop = Math.abs(Math.sin(this.time * 9 + e.id)) * 0.08;
@@ -603,6 +877,27 @@ export class Renderer {
           }
           ctx.stroke();
         }
+      } else if (f.type === 'ring') {
+        ctx.globalAlpha = (1 - t) * 0.9;
+        ctx.strokeStyle = f.color;
+        ctx.lineWidth = 0.12;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.r * (0.25 + 0.75 * t), 0, TAU);
+        ctx.stroke();
+      } else if (f.type === 'flame') {
+        ctx.globalAlpha = (1 - t) * 0.75;
+        const reach = f.range * (0.5 + 0.5 * t);
+        for (const [color, k] of [
+          ['#ff922b', 1],
+          ['#ffe066', 0.6],
+        ] as const) {
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.moveTo(f.x, f.y);
+          ctx.arc(f.x, f.y, reach * k, f.angle - f.spread * k, f.angle + f.spread * k);
+          ctx.closePath();
+          ctx.fill();
+        }
       } else if (f.type === 'puff') {
         ctx.globalAlpha = (1 - t) * 0.8;
         ctx.fillStyle = f.color;
@@ -648,9 +943,49 @@ export class Renderer {
       ctx.arc(hover.x + def.size / 2, hover.y + def.size / 2, def.range, 0, TAU);
       ctx.fill();
       ctx.stroke();
+      if (def.minRange) {
+        // The dead zone a mortar cannot reach.
+        ctx.setLineDash([0.2, 0.15]);
+        ctx.beginPath();
+        ctx.arc(hover.x + def.size / 2, hover.y + def.size / 2, def.minRange, 0, TAU);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
     }
   }
+
+  /** Paints one building, as it looks when idle, to fill a small canvas. */
+  drawIcon(kind: BuildingKind, icon: HTMLCanvasElement): void {
+    const game = ICON_GAME;
+    const b: Building = {
+      id: 1,
+      kind,
+      x: 0,
+      y: 0,
+      size: 1,
+      hp: 1,
+      maxHp: 1,
+      cooldown: 0,
+      aim: -Math.PI / 4,
+      staffed: true,
+      targetId: 0,
+      soak: false,
+      honey: false,
+      wired: false,
+      row: false,
+    };
+    const main = this.ctx;
+    const ctx = icon.getContext('2d')!;
+    this.ctx = ctx;
+    ctx.setTransform(icon.width * 0.84, 0, 0, icon.width * 0.84, icon.width * 0.08, icon.width * 0.08);
+    ctx.lineJoin = ctx.lineCap = 'round';
+    this.drawBuilding(game, b);
+    this.ctx = main;
+  }
 }
+
+/** Just enough of a game for drawBuilding to paint a lone building. */
+const ICON_GAME = { grid: new Int32Array(N * N), buildings: new Map(), brownout: false } as unknown as Game;
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
   ctx.beginPath();

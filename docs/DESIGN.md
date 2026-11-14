@@ -88,10 +88,10 @@ Eight towers at launch. Each has three linear tiers, then splits into **two spec
 | **Carrot Launcher** | Cheap single target | none | *Gatling Carrot*: very fast, short range | *Parsnip Sniper*: map-long range, hits hardest target |
 | **Tesla Hutch** (rabbit in a Tesla coil) | Chain lightning, uses Volts | Zapped | *Storm Coil*: chains to 8, weaker per hit | *Death Ray-bbit*: single continuous beam that ramps up |
 | **Cabbage Mortar** | Long range splash, cannot hit close | none | *Sauerkraut Shells*: leaves a poison cloud | *Big Bertha Cabbage*: huge slow shell, knocks back |
-| **Sprinkler** | No damage, wide cone | Wet | *Pressure Washer*: pushes enemies backward | *Fog Machine*: enemies inside lose their targets |
+| **Sprinkler** | No damage, soaks everything around it | Wet | *Pressure Washer*: pushes enemies backward | *Fog Machine*: enemies inside lose their targets |
 | **Honey Pot** | Slows a zone | Sticky | *Tar Pit*: near-total slow, small area | *Honey Cannon*: lobs sticky globs at range |
 | **Chili Flamer** | Short cone, damage over time | Spicy | *Ghost Pepper*: burning spreads between enemies | *Popcorn Maker*: kills explode |
-| **Beehive** | Homing swarm, hits air | none | *Killer Bees*: stacks damage on one target | *Bee-52s*: bomb runs along a line |
+| **Beehive** | Locks on to one enemy and stings it down, hits air, needs no bunny | none | *Killer Bees*: stacks damage on one target | *Bee-52s*: bomb runs along a line |
 | **Thumper** (rabbit on a big drum) | Pulsed stun around itself | none | *Bass Drop*: bigger radius, damages walls' attackers | *Carrot FM*: no stun, buffs fire rate of adjacent towers |
 
 ## 6. Synergies
@@ -104,13 +104,16 @@ are consumed and trigger a combo:
 | Combo | Name | Effect |
 |---|---|---|
 | Wet + Zapped | **Conducted** | Lightning damage doubled and chains +3 |
-| Sticky + Spicy | **Caramelized** | Armor removed for 5 s |
-| Wet + Spicy | **Steamed** | Small area burst, clears Fog and reveals moles |
-| Sticky + Zapped | **Static Cling** | Enemy pulls nearby enemies into a clump |
-| Wet + Sticky | **Syrup Slick** | Slow spreads along the ground as a trail |
+| Sticky + Spicy | **Caramelized** | Takes 50% more damage for 5 s (and loses armor, once armored enemies exist) |
+| Wet + Spicy | **Steamed** | Small area burst (later also clears Fog and reveals moles) |
+| Sticky + Zapped | **Static Cling** | Enemy pulls nearby enemies into a clump and stuns them briefly |
+| Wet + Sticky | **Syrup Slick** | Leaves a puddle on the ground that slows everyone in it |
 | Zapped + Spicy | **Flash Fried** | Instant burst based on missing health |
 
-**Adjacency links.** Towers placed next to each other form a visible link:
+An enemy carries one status at a time, so which tower reaches it first matters: a Honey Pot in
+front of a Sprinkler turns Wet into Syrup Slick before the Tesla Hutch ever sees it.
+
+**Adjacency links.** Towers that share a tile edge form a visible link:
 
 - Sprinkler next to Tesla Hutch: the Hutch's first hit always counts as Conducted.
 - Beehive next to Honey Pot: bees prioritize Sticky enemies and deal +50% to them.

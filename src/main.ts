@@ -5,7 +5,7 @@ import { NIGHTS } from './data/waves';
 import { Renderer, type Tool } from './render/renderer';
 import { build, canAfford, canPlace, createGame, sell, startNight, step } from './sim/game';
 import type { Game } from './sim/types';
-import { Hud } from './ui/hud';
+import { guideHtml, Hud, SELL_KEY, TOOL_KEYS } from './ui/hud';
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const stage = document.getElementById('stage')!;
@@ -22,6 +22,13 @@ let announced = false;
 
 const hud = new Hud({
   selectTool: (t) => (tool = tool === t ? null : t),
+  drawIcon: (kind, icon) => renderer.drawIcon(kind, icon),
+  showGuide: () => {
+    if (game.phase === 'won' || game.phase === 'lost') return;
+    // The overlay pauses the game; its button resumes it.
+    running = false;
+    hud.showOverlay('Statuses and combos', guideHtml(), 'Back to the garden');
+  },
   startNight: () => startNight(game),
   toggleSpeed: () => (speed = speed === 1 ? 2 : 1),
   overlayButton: () => {
@@ -43,6 +50,7 @@ hud.showOverlay(
      <li>Towers, farms and wheels each need a <b>bunny</b>. <b>Hutches</b> house more, and bunnies multiply every dawn.</li>
      <li><b>Carrot Patches</b> pay out every dawn. <b>Tesla Hutches</b> need Volts from <b>Hamster Wheels</b>.</li>
      <li>Gnomes attack whatever building is nearest. Mowers hunt Hutches and the Carrot, and shred Hedges.</li>
+     <li>Some towers leave enemies <b>Wet</b>, <b>Sticky</b>, <b>Zapped</b> or <b>Spicy</b>. Two different ones on the same enemy set off a combo. The <b>Combos</b> button lists them all.</li>
      <li>Drag to paint walls. Everything is repaired at dawn. Building at night costs 50% more.</li>
    </ul>`,
   'Defend the Carrot',
@@ -95,9 +103,11 @@ canvas.addEventListener('contextmenu', (ev) => {
 
 window.addEventListener('keydown', (ev) => {
   if (ev.repeat) return;
-  const digit = Number(ev.key);
-  if (digit >= 1 && digit <= BUILDABLE.length) tool = BUILDABLE[digit - 1];
-  else if (digit === BUILDABLE.length + 1) tool = 'sell';
+  if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+  const key = ev.key.toLowerCase();
+  const slot = key.length === 1 ? TOOL_KEYS.indexOf(key) : -1;
+  if (slot >= 0 && slot < BUILDABLE.length) tool = BUILDABLE[slot];
+  else if (key === SELL_KEY) tool = 'sell';
   else if (ev.key === 'Escape') tool = null;
   else if (ev.key === ' ') {
     ev.preventDefault();

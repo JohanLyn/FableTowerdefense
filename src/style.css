@@ -205,3 +205,119 @@ kbd {
     display: none;
   }
 }
+
+/* ------------------------------------------------------------ build bar */
+
+#bar {
+  row-gap: 6px;
+}
+
+#tool-info {
+  flex-basis: 100%;
+  min-height: 20px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #cfe3c4;
+}
+
+#tool-info b {
+  color: #f4f1ea;
+}
+
+#tool-info .needs {
+  color: #ffd8a8;
+  margin: 0 6px 0 2px;
+  white-space: nowrap;
+}
+
+#tools {
+  gap: 5px;
+  align-items: center;
+}
+
+#tools .gap {
+  width: 8px;
+}
+
+button.tool {
+  padding: 3px 4px 2px;
+  width: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+button.tool canvas {
+  width: 34px;
+  height: 34px;
+  display: block;
+}
+
+button.tool .glyph {
+  height: 34px;
+  line-height: 34px;
+  font-size: 20px;
+  color: #ff8787;
+}
+
+button.tool small {
+  font-size: 11px;
+}
+
+/* ---------------------------------------------------------- combo guide */
+
+.card {
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+.card h2 {
+  font-size: 16px;
+  margin: 14px 0 4px;
+  color: #ffd8a8;
+  text-align: left;
+}
+
+table.guide {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #dbe8d3;
+  margin-bottom: 12px;
+}
+
+table.guide td {
+  padding: 4px 6px 4px 0;
+  vertical-align: top;
+}
+
+table.guide td:first-child {
+  white-space: nowrap;
+  padding-right: 10px;
+}
+
+.chip {
+  display: inline-block;
+  padding: 0 7px;
+  border-radius: 9px;
+  color: #1b1b1b;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.swatch {
+  display: inline-block;
+  width: 18px;
+  height: 6px;
+  border-radius: 3px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+@media (max-width: 640px) {
+  table.guide td:first-child {
+    white-space: normal;
+  }
+}
